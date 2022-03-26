@@ -21,7 +21,6 @@ import { fromString } from 'uint8arrays/from-string'
     
 
     useEffect(() => {
-        console.log('Component mounted');
         var litNodeClient = new LitJsSdk.LitNodeClient()
         litNodeClient.connect()
         window.litNodeClient = litNodeClient
@@ -38,7 +37,8 @@ import { fromString } from 'uint8arrays/from-string'
     });
     
     const mintBook = async(bookId: number) => {
-        console.log('Starting to mint book: ', bookId);
+
+        console.log('Starting to mint a new nft from book: ', bookId);
 
         // 1. Get authSig from the account selected in Metamask
         const authSig = await LitJsSdk.checkAndSignAuthMessage({chain: 'mumbai'})
@@ -49,21 +49,50 @@ import { fromString } from 'uint8arrays/from-string'
         // 3. Get encryptedString and symetricKey from Lit by providing the ipfs hash
         const { encryptedString, symmetricKey } = await LitJsSdk.encryptString(
             book.epub_ipfs
-        );
+        )
 
-        let symmetricKeyToString = toString(symmetricKey, 'base16')
-        setSymmetricKeyString(symmetricKeyToString)
-        console
+        // 3.1 symmetricKey is an Uint8Array, so we need a string version to store it
+        let symmetricKeyToString = toString(symmetricKey, 'base64')
 
+        // 3.2 encryptedString is a Blob, so we need a string version to store it
         let base64String = await convertBlobToBase64(encryptedString)
+        
+        // 4. Mint NFT with the encryptedString and get tokenId
+        
+        // 5. Set accessControlConditions
+        const accessControlConditions = [
+          {
+            contractAddress: '',
+            standardContractType: '',
+            chain: 'ethereum',
+            method: 'eth_getBalance',
+            parameters: [
+              ':userAddress',
+              'latest'
+            ],
+            returnValueTest: {
+              comparator: '>=',
+              value: '10000000000000'
+            }
+          }
+        ]
 
-        console.log("sk 1: ", symmetricKey)
+      // 6. get encryptedSymmetricKey from Lit by providing accessControlConditions, symmetricKey, authSig, and chain
+
+      // 7. Save a record in Supabase with tokenId, accessControlConditions, and encryptedSymmetricKey.
+
+
+
+        
+
+
+        // console.log("sk 1: ", symmetricKey)
         // const text = await new Response(encryptedString).text()
         // setBookSymmetricKey(symmetricKey);
         // bookSymmetricKey = symmetricKey;
         // console.log("sk 2: ", bookSymmetricKey);
-        setEncryptedUrl(base64String)
-        console.log("encripted string: ", base64String)
+        
+        // console.log("encripted string: ", base64String)
 
         // const base64Response = await fetch(`${base64String}`);
         // const blob = await base64Response.blob();
@@ -73,43 +102,26 @@ import { fromString } from 'uint8arrays/from-string'
 
         // console.log("symmetric key: ", symmetricKey);
         
-        // 4. Mint NFT with the encryptedString and get tokenId
         
-        // 5. Set accessControlConditions
-        const accessControlConditions = [
-            {
-              contractAddress: '',
-              standardContractType: '',
-              chain: 'ethereum',
-              method: 'eth_getBalance',
-              parameters: [
-                ':userAddress',
-                'latest'
-              ],
-              returnValueTest: {
-                comparator: '>=',
-                value: '10000000000000'
-              }
-            }
-          ]
 
-        // 6. get encryptedSymmetricKey from Lit by providing accessControlConditions, symmetricKey, authSig, and chain
-
-        // 7. Save a record in Supabase with tokenId, accessControlConditions, and encryptedSymmetricKey.
-
+        setSymmetricKeyString(symmetricKeyToString)
+        setEncryptedUrl(base64String)
     }
 
     const unlockBook = async(bookId: number) => {
 
-        let symetricKey = new Uint8Array()
-        symetricKey = fromString(symmetricKeyString, 'base16')
-        console.log("unlock symetricKey: ", symetricKey)
+      const base64 = await fetch(encryptedUrl)
+      const blob = await base64.blob()
 
-        const decryptedString = await LitJsSdk.decryptString(
-            encryptedUrl,
-            symetricKey
-          );
-        setDecryptedUrl(decryptedString);
+      let symetricKey = new Uint8Array()
+      symetricKey = fromString(symmetricKeyString, 'base64')
+      console.log("unlock symetricKey: ", symetricKey)
+
+      const decryptedString = await LitJsSdk.decryptString(
+        blob,
+          symetricKey
+        );
+      setDecryptedUrl(decryptedString);
     }
 
   return (
