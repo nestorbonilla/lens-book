@@ -11,6 +11,7 @@ import { useContractWrite } from 'wagmi'
 import LitJsSdk from 'lit-js-sdk'
 import { toString } from 'uint8arrays/to-string'
 import { fromString } from 'uint8arrays/from-string'
+import BookABI from '../../contracts/BookABI.json'
 
 // const Home: NextPage = ({ book }) => {
   export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticProps>) {
@@ -19,16 +20,13 @@ import { fromString } from 'uint8arrays/from-string'
     //   fetchEns: true,
     // })
 
-    // const [{ data, error, loading }, write] = useContractWrite(
-    //   {
-    //     addressOrName: '0x',
-    //     contractInterface: bookABI,
-    //   },
-    //   'mint',
-    //   {
-    //     args: [],
-    //   }
-    // )
+    const [{ data, error, loading }, write] = useContractWrite(
+      {
+        addressOrName: '0x302B195Fe77b68652326E26E6C430338cC3bAF47',
+        contractInterface: BookABI,
+      },
+      'mint'
+    )
 
     // console.log("account: ", data)
 
@@ -80,7 +78,7 @@ import { fromString } from 'uint8arrays/from-string'
         let metadata = ""
         
         // 4. Mint NFT with the encryptedString and get tokenId
-        // let tokenId = await write({args: [bookId, metadata]})
+        let tokenId = await write({args: [bookId, metadata]})
         
         // 5. Set accessControlConditions
         const accessControlConditions = [

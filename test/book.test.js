@@ -36,23 +36,23 @@ describe('BookV1', function () {
     })
 
     it('Owner can set the baseURI.', async function() {
-        await bookV1.setBaseURI(process.env.IPFS_GATEWAY);
+        await bookV1.setBaseURI('https://gateway.com/ipfs/');
         const baseURI = await bookV1.baseURI();
-        assert(baseURI == process.env.IPFS_GATEWAY, 'baseURI not set');
+        assert(baseURI == 'https://gateway.com/ipfs/', 'baseURI not set');
     })
 
     it('Author can create a book struct.', async function() {
         await bookV1.connect(author1).setBook(15);
         const book = await bookV1.books(1);
-        assert(book.maxMint.equal(15), 'book not created properly');
+        assert(book.maxMint == 15, 'book not created properly');
     })
 
     it('User can mint a book providing a bookCollectionId.', async function() {
         const author1Address = await author1.getAddress();
         author1BalancePreMint = await ethers.provider.getBalance(author1Address);
-        await bookV1.connect(minter1).mint(1, { value: ethers.utils.parseEther('1') });
-        const tokenURI = await bookV1.tokenURI(1, 'ABC');
-        assert(tokenURI == process.env.IPFS_GATEWAY + 'ABC', 'book not minted properly');
+        await bookV1.connect(minter1).mint(1, 'ABC', { value: ethers.utils.parseEther('1') });
+        const tokenURI = await bookV1.tokenURI(1);
+        assert(tokenURI == 'https://gateway.com/ipfs/ABC', 'book not minted properly');
     })
 
 })
