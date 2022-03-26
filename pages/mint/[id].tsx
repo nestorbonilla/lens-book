@@ -205,7 +205,7 @@ import { fromString } from 'uint8arrays/from-string'
 
 Mint.Layout = Layout
 
-export const getStaticPaths: GetStaticPaths = async () => {
+export const getStaticPaths = async () => {
     const { data: books } = await supabase.from("book").select('bookId')
     const paths = books?.map(({bookId}) => ({
         params: {
