@@ -15,9 +15,15 @@ type Props = {
 
 const dev_wallet = "0x2BfC102290Bc92767B290B60fdfeCa120058ECD0";
 
+export const useIsMounted = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
+};
+
 const LensReader = ({ url }: Props) => {
   const [{ data, error }, connect] = useConnect();
-
+  const isMounted = useIsMounted();
   const [challenge, setChallenge] = useState<any>("");
 
   const fetchChallenge = async () => {
@@ -58,7 +64,11 @@ const LensReader = ({ url }: Props) => {
             key={connector.id}
             onClick={() => connect(connector)}
           >
-            {connector.name}
+            {isMounted
+              ? connector.name
+              : connector.id === "injected"
+              ? connector.id
+              : connector.name}
             {!connector.ready && " (unsupported)"}
           </button>
         ))}
@@ -71,8 +81,7 @@ const LensReader = ({ url }: Props) => {
           onClick={fetchChallenge}
         >
           Fetch Challenge
-        </button>
-        {" "}
+        </button>{" "}
         {challenge ? "success" : ""}
       </div>
       <div>
@@ -91,7 +100,7 @@ const LensReader = ({ url }: Props) => {
         >
           Create Profile
         </button>
-           {/* {challenge ? "success" : ""} */}
+        {/* {challenge ? "success" : ""} */}
       </div>
       <div>
         <button
@@ -100,7 +109,7 @@ const LensReader = ({ url }: Props) => {
         >
           Create Publication
         </button>
-           {/* {challenge ? "success" : ""} */}
+        {/* {challenge ? "success" : ""} */}
       </div>
       <div>
         <button
@@ -109,7 +118,7 @@ const LensReader = ({ url }: Props) => {
         >
           Create Comment
         </button>
-           {/* {challenge ? "success" : ""} */}
+        {/* {challenge ? "success" : ""} */}
       </div>
       <div>
         <button
@@ -118,7 +127,7 @@ const LensReader = ({ url }: Props) => {
         >
           Create Mirror
         </button>
-           {/* {challenge ? "success" : ""} */}
+        {/* {challenge ? "success" : ""} */}
       </div>
     </div>
   );
