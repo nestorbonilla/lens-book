@@ -43,7 +43,8 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
     },
     mumbai: {
       url: process.env.MUMBAI_RPC,
-      accounts: [ process.env.ADMIN_PRIVATE_KEY, process.env.AUTHOR_PRIVATE_KEY, process.env.USER_PRIVATE_KEY ]
+      accounts: [ process.env.ADMIN_PRIVATE_KEY, process.env.AUTHOR_PRIVATE_KEY, process.env.USER_PRIVATE_KEY ],
+      gas: 2100000, gasPrice: 8000000000
     },
     rinkeby: {
       url: process.env.RINKEBY_RPC,
