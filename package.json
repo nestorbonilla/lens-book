@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "chain": "hardhat node",
+    "test": "npx hardhat test"
   },
   "dependencies": {
     "@heroicons/react": "^1.0.6",

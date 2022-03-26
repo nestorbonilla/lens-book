@@ -19,18 +19,18 @@ import { fromString } from 'uint8arrays/from-string'
     //   fetchEns: true,
     // })
 
-    const [{ data, error, loading }, write] = useContractWrite(
-      {
-        addressOrName: '0x',
-        contractInterface: bookABI,
-      },
-      'mint',
-      {
-        args: [],
-      }
-    )
+    // const [{ data, error, loading }, write] = useContractWrite(
+    //   {
+    //     addressOrName: '0x',
+    //     contractInterface: bookABI,
+    //   },
+    //   'mint',
+    //   {
+    //     args: [],
+    //   }
+    // )
 
-    console.log("account: ", data)
+    // console.log("account: ", data)
 
     let [encryptedUrl, setEncryptedUrl] = useState("");
     let [decryptedUrl, setDecryptedUrl] = useState("");
@@ -75,9 +75,12 @@ import { fromString } from 'uint8arrays/from-string'
 
         // 3.2 encryptedString is a Blob, so we need a string version to store it
         let base64String = await convertBlobToBase64(encryptedString)
+
+        // create metadata
+        let metadata = ""
         
         // 4. Mint NFT with the encryptedString and get tokenId
-        let tokenId = await write({args: bookId})
+        // let tokenId = await write({args: [bookId, metadata]})
         
         // 5. Set accessControlConditions
         const accessControlConditions = [
