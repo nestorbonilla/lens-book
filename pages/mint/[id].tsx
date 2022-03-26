@@ -4,14 +4,33 @@ import Image from 'next/image'
 import { InferGetStaticPropsType } from 'next'
 import { PaperClipIcon, PlusIcon } from '@heroicons/react/solid'
 import { Layout } from '@components/common'
+import { useAccount } from 'wagmi'
 import { supabase } from '../../utils/supabase'
 import { useEffect, useState } from 'react'
+import { useContractWrite } from 'wagmi'
 import LitJsSdk from 'lit-js-sdk'
 import { toString } from 'uint8arrays/to-string'
 import { fromString } from 'uint8arrays/from-string'
 
 // const Home: NextPage = ({ book }) => {
   export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticProps>) {
+
+    // const [{ data, error, loading }, disconnect] = useAccount({
+    //   fetchEns: true,
+    // })
+
+    const [{ data, error, loading }, write] = useContractWrite(
+      {
+        addressOrName: '0x',
+        contractInterface: bookABI,
+      },
+      'mint',
+      {
+        args: [],
+      }
+    )
+
+    console.log("account: ", data)
 
     let [encryptedUrl, setEncryptedUrl] = useState("");
     let [decryptedUrl, setDecryptedUrl] = useState("");
@@ -58,6 +77,7 @@ import { fromString } from 'uint8arrays/from-string'
         let base64String = await convertBlobToBase64(encryptedString)
         
         // 4. Mint NFT with the encryptedString and get tokenId
+        let tokenId = await write({args: bookId})
         
         // 5. Set accessControlConditions
         const accessControlConditions = [
