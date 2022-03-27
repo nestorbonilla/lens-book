@@ -41,7 +41,6 @@ const LensPoster = ({ profile, highlightText, cfiRange }) => {
           traitType: "quote",
           value: highlightText,
         },
-
         {
           displayType: "string",
           traitType: "author",
