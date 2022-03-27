@@ -11,8 +11,10 @@
     "test": "npx hardhat test"
   },
   "dependencies": {
+    "@headlessui/react": "^1.5.0",
     "@heroicons/react": "^1.0.6",
     "@openzeppelin/contracts": "^4.5.0",
+    "@pinata/sdk": "^1.1.23",
     "@supabase/supabase-js": "^1.32.1",
     "dotenv": "^16.0.0",
     "lit-js-sdk": "^1.1.153",
