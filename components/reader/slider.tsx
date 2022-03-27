@@ -63,7 +63,7 @@ export default function Slider({
                     <div className="flex items-start justify-between">
                       <Dialog.Title className="text-lg font-medium text-gray-900">
                         {" "}
-                        Panel title{" "}
+                        Lets do Lens Things{" "}
                       </Dialog.Title>
                       <div className="ml-3 flex h-7 items-center">
                         <button
@@ -80,7 +80,7 @@ export default function Slider({
                   <div className="relative mt-6 flex-1 px-4 sm:px-6">
                     {/* Replace with your content */}
 
-                    <div>Shit Book but with lens!</div>
+                    {/* <div>Shit Book but with lens!</div> */}
                     <div>
                       <button
                         className="mt-4 bg-purple-500 rounded-md p-2"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { apolloClient, setGlobalAuthenticationToken } from "../../utils/apollo";
 import { gql } from "@apollo/client";
 import { ethers } from "ethers";
@@ -11,10 +11,11 @@ import {
 // const alchemyId = process.env.ALCHEMY_KEY
 import Web3Modal from "web3modal";
 import { MenuIcon } from "@heroicons/react/outline";
-
+import { Rendition } from "epubjs";
 import Web3Poster from "./web3poster";
 import Slider from "./slider";
 import { ReactReader } from "react-reader";
+import { v4 as uuid } from "uuid";
 
 type Props = {
   url: string;
@@ -30,6 +31,22 @@ export const useIsMounted = () => {
   return mounted;
 };
 
+export interface Highlight {
+  text: string;
+  cfiRange: string;
+  local_id: string; //create for local reading experience to work offline
+  supabase_annotation_id?: string;
+  persisted: boolean;
+  user_id?: string; //jwt / wallet / something at some point.
+  objectId?: string;
+  bookId?: string; // either an ERC1155 or ERC721 token ID
+  notes?: string;
+  chapter?: {
+    href: string;
+    label: string;
+  };
+}
+
 const LOCAL_LENS_PROFILE = "lensbook_profile";
 
 const LensReader = ({ url }: Props) => {
@@ -43,7 +60,20 @@ const LensReader = ({ url }: Props) => {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [cfiRange, setCfiRange] = useState<string>("");
+  //one current highlight
   const [highlightText, setHighlightText] = useState<string>("");
+  //all highlights
+  const [highlights, setHighlights] = useState<Map<string, Highlight>>(
+    new Map<string, Highlight>()
+  );
+  const [epubRendered, setEpubRendered] = useState<boolean>(false);
+
+  // And your own state logic to persist state
+  const [location, setLocation] = useState<string | number | undefined>();
+
+  //rendition is epubjs stuff
+  const renditionRef = useRef<Rendition>();
+  const tocRef = useRef<any>();
 
   const connect = async () => {
     const web3Modal = new Web3Modal();
@@ -102,7 +132,6 @@ const LensReader = ({ url }: Props) => {
       const provider = new ethers.providers.Web3Provider(instance);
 
       let res = await provider.getSigner().signMessage(challenge);
-
 
       console.log("res: ", res);
 
@@ -177,13 +206,85 @@ const LensReader = ({ url }: Props) => {
     setProfiles(res.data.profiles.items);
   };
 
+  function getRendition(rendition: Rendition) {
+    console.log("Hit Rendition");
+    // console.log(rendition);
+
+    renditionRef.current = rendition;
+    renditionRef.current.themes.default({
+      "::selection": {
+        background: "pink",
+      },
+    });
+
+    setEpubRendered(true);
+  }
+
+  //book order matters not when they where highlighted. Order by cfiRange?
+  const saveHighlight = async (cfiRange: string, contents: any) => {
+    try {
+      //update local state
+      let local_id = uuid();
+
+      let highlight: Highlight = {
+        local_id,
+        text: renditionRef.current!.getRange(cfiRange).toString(),
+        cfiRange,
+        persisted: false,
+      };
+
+      //update local state
+      setHighlights((prev) => new Map(prev).set(local_id, highlight));
+
+      //update epub ( local non persistent highlighs added )
+      saveHighlightToEpub(cfiRange, contents);
+
+      //add to LENS PROTOCOL!
+      setOpen(true);
+      setHighlightText(highlight.text);
+      setCfiRange(highlight.cfiRange);
+      // setChapter(highlight.chapter?.label);
+      // let serverHighlight = await saveHighlightToSupabase(highlight);
+      //TODO: do it.
+
+      //update loading state of highlight from supabase
+      setHighlights((prev) =>
+        new Map(prev).set(local_id, { ...highlight, persisted: true })
+      );
+    } catch (e) {
+      alert("Add Highlight Failed" + (e as Error).message);
+    }
+  };
+
+  const saveHighlightToEpub = (cfiRange: string, contents: any) => {
+    if (renditionRef.current) {
+      //adds the highlight to the rendition. gone between page refresh.
+      renditionRef.current.annotations.add(
+        "highlight",
+        cfiRange,
+        {},
+        undefined,
+        "hl",
+        { fill: "pink", "fill-opacity": "0.5", "mix-blend-mode": "multiply" }
+      );
+      //this removes like the native highlight as we apply the state managed one
+      contents.window.getSelection().removeAllRanges();
+    } else {
+      console.log("No rendition for save Highlight");
+    }
+  };
 
   return (
     <div style={{ height: "100vh" }}>
       <ReactReader
+        location={location}
+        locationChanged={(arg) => setLocation(arg)}
         url={"https://gerhardsletten.github.io/react-reader/files/alice.epub"}
+        getRendition={getRendition}
+        epubInitOptions={{ openAs: "epub" }}
+        tocChanged={(toc) => (tocRef.current = toc)}
       />
-       {!open && (
+      {!open && (
         <button
           type="button"
           className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:ring-2 focus:ring-indigo-500"
@@ -202,7 +303,7 @@ const LensReader = ({ url }: Props) => {
         </button>
       )}
       <Slider
-       address={address}
+        address={address}
         connect={connect}
         show={open}
         hide={() => setOpen(false)}
