@@ -7,179 +7,206 @@ import { Dialog, Transition } from '@headlessui/react'
 import { CheckIcon } from '@heroicons/react/outline'
 import { Layout } from '@components/common'
 import { supabase } from '../../utils/supabase'
-import { useContractWrite, useContractEvent } from 'wagmi'
+import { useContractWrite, useContractEvent, useContract, useSigner } from 'wagmi'
 import LitJsSdk from 'lit-js-sdk'
 import { toString } from 'uint8arrays/to-string'
 import { fromString } from 'uint8arrays/from-string'
 import BookABI from '../../contracts/BookABI.json'
 
-// const Home: NextPage = ({ book }) => {
-  export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticProps>) {
+export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticProps>) {
 
-    let chain = 'mumbai'
-    let smartContractAddress = '0x302B195Fe77b68652326E26E6C430338cC3bAF47'
+  let chain = 'mumbai'
+  let smartContractAddress = '0x302B195Fe77b68652326E26E6C430338cC3bAF47'
+  const [{data: signerData}] = useSigner()
+  const contract = useContract({
+    addressOrName: smartContractAddress,
+    contractInterface: BookABI,
+    signerOrProvider: signerData,
+  })
 
-    const [{ data, error, loading }, write] = useContractWrite(
-      {
-        addressOrName: smartContractAddress,
-        contractInterface: BookABI,
-      },
-      'mint'
-    )
+  const [{ data: dataWrite, error: errorWrite, loading: loadingWrite }, write] = useContractWrite(
+    {
+      addressOrName: smartContractAddress,
+      contractInterface: BookABI,
+    },
+    'mint'
+  )
 
-    useContractEvent(
-      {
-        addressOrName: smartContractAddress,
-        contractInterface: BookABI,
-      },
-      'MintedBookNFT',
-      (event) => {
-        console.log("hey: ", event)
-        mintBookStep2(1)
-      },
-    )
+  useContractEvent(
+    {
+      addressOrName: smartContractAddress,
+      contractInterface: BookABI,
+    },
+    'MintedBookNFT',
+    (event) => {
+      console.log("hey: ", event)
+      mintBookStep2(1)
+    },
+  )
 
-    const [open, setOpen] = useState(true)
-    let [encryptedUrl, setEncryptedUrl] = useState("")
-    let [decryptedUrl, setDecryptedUrl] = useState("")
-    let [symmetricKeyString, setSymmetricKeyString] = useState("")
-    // let bookSymmetricKey = new Uint8Array()
-    // let [bookSymmetricKey, setBookSymmetricKey] = useState(new Uint8Array())
+  let [encryptedUrl, setEncryptedUrl] = useState("")
+  let [decryptedUrl, setDecryptedUrl] = useState("")
+  let [symmetricKeyString, setSymmetricKeyString] = useState("")
+  
+
+  useEffect(() => {
+      var litNodeClient = new LitJsSdk.LitNodeClient()
+      litNodeClient.connect()
+      window.litNodeClient = litNodeClient
+      console.log('Lit ready')
+  }, [])
+
+  const convertBlobToBase64 = (blob: Blob) => new Promise((resolve, reject) => {
+      const reader = new FileReader;
+      reader.onerror = reject;
+      reader.onload = () => {
+          resolve(reader.result);
+      };
+      reader.readAsDataURL(blob);
+  });
+  
+  const mintBookStep1 = async(bookId: number) => {
+
+    console.log('Starting to mint a new nft from book: ', bookId)
+
+    // 1. Get authSig from the account selected in Metamask
+    const authSig = await LitJsSdk.checkAndSignAuthMessage({chain})
+
+    // 2. Get IPFS URL of EPUB file
+    const { data: book } = await supabase.from('book').select('*').eq('bookId', bookId).single()
     
+    // 3. Get encryptedString and symetricKey from Lit by providing the ipfs hash
+    const { encryptedString, symmetricKey } = await LitJsSdk.encryptString(book.epub_ipfs)
 
-    useEffect(() => {
-        var litNodeClient = new LitJsSdk.LitNodeClient()
-        litNodeClient.connect()
-        window.litNodeClient = litNodeClient
-        console.log('Lit ready');
-    }, [])
+    // 3.1 symmetricKey is an Uint8Array, so we need a string version to store it
+    let symmetricKeyToString = toString(symmetricKey, 'base64')
 
-    const convertBlobToBase64 = (blob: Blob) => new Promise((resolve, reject) => {
-        const reader = new FileReader;
-        reader.onerror = reject;
-        reader.onload = () => {
-            resolve(reader.result);
-        };
-        reader.readAsDataURL(blob);
-    });
-    
-    const mintBookStep1 = async(bookId: number) => {
+    // 3.2 encryptedString is a Blob, so we need a string version to store it
+    let base64String = await convertBlobToBase64(encryptedString)
 
-      console.log('Starting to mint a new nft from book: ', bookId)
+    // 4. create metadata
 
-      // 1. Get authSig from the account selected in Metamask
-      const authSig = await LitJsSdk.checkAndSignAuthMessage({chain})
-
-      // 2. Get IPFS URL of EPUB file
-      const { data: book } = await supabase.from('book').select('*').eq('bookId', bookId).single()
-      
-      // 3. Get encryptedString and symetricKey from Lit by providing the ipfs hash
-      const { encryptedString, symmetricKey } = await LitJsSdk.encryptString(book.epub_ipfs)
-
-      // 3.1 symmetricKey is an Uint8Array, so we need a string version to store it
-      let symmetricKeyToString = toString(symmetricKey, 'base64')
-
-      // 3.2 encryptedString is a Blob, so we need a string version to store it
-      let base64String = await convertBlobToBase64(encryptedString)
-
-      // 4. create metadata
-
-      // 4.1 elaborate metadata json
-      let metadata = {
-        "name": book.title,
-        "description": book.description,
-        "image": book.cover,
-        "book_url": base64String,
-        "attributes": [
-            {
-                "trait_type": "author", 
-                "value": book.author
-            }
-        ]
-      }
-
-      // 4.2 elaborate pinata options
-      const options = {
-        pinataMetadata: {
-            name: "book_" + book.bookId
-        }
-      }
-
-      // 4.3 get hash of metadata
-      const {ipfsHash} = await fetch('/api/ipfs', {
-        method: 'POST',
-        body: JSON.stringify({ metadata, options })
-      }).then(response => response.json());
-
-      console.log("nft metadata: ", ipfsHash)
-        
-      // 5. Mint NFT with the encryptedString and get tokenId
-      let tokenId = await write({args: [bookId, ipfsHash]})
-
-      setSymmetricKeyString(symmetricKeyToString)
-      setEncryptedUrl(base64String)
-    }
-
-    const mintBookStep2 = async(tokenId: number) => {
-
-      // 6. Set accessControlConditions
-      const accessControlConditions = [
-        {
-          contractAddress: smartContractAddress,
-          standardContractType: 'ERC721',
-          chain,
-          method: 'ownerOf',
-          parameters: [
-            tokenId
-          ],
-          returnValueTest: {
-            comparator: '=',
-            value: ':userAddress'
+    // 4.1 elaborate metadata json
+    let metadata = {
+      "name": book.title,
+      "description": book.description,
+      "image": book.cover,
+      "book_url": base64String,
+      "attributes": [
+          {
+              "trait_type": "author", 
+              "value": book.author
           }
-        }
       ]
+    }
 
-      const authSig = await LitJsSdk.checkAndSignAuthMessage({chain})
-      let symmetricKey = new Uint8Array()
-      symmetricKey = fromString(symmetricKeyString, 'base64')
-
-      // 7. get encryptedSymmetricKey from Lit by providing accessControlConditions, symmetricKey, authSig, and chain
-      const encryptedSymmetricKey = await window.litNodeClient.saveEncryptionKey({
-        accessControlConditions,
-        symmetricKey,
-        authSig,
-        chain,
-      })
-
-      // 8. Save a record in Supabase with tokenId, accessControlConditions, and encryptedSymmetricKey
-      let nft = {
-        tokenId,
-        accessControlConditions,
-        encryptedSymmetricKey
+    // 4.2 elaborate pinata options
+    const options = {
+      pinataMetadata: {
+          name: "book_" + book.bookId
       }
-      const result = await fetch('/api/nft', {
-        method: 'POST',
-        body: JSON.stringify({ nft })
-      }).then(response => response.json());
-
-      console.log("result from nft api: ", result)
     }
 
-    const unlockBook = async(bookId: number) => {
+    // 4.3 get hash of metadata
+    const {ipfsHash} = await fetch('/api/ipfs', {
+      method: 'POST',
+      body: JSON.stringify({ metadata, options })
+    }).then(response => response.json());
 
-      const base64 = await fetch(encryptedUrl)
-      const blob = await base64.blob()
+    console.log("nft metadata: ", ipfsHash)
+      
+    // 5. Mint NFT with the encryptedString and get tokenId
+    await write({args: [bookId, ipfsHash]})
 
-      let symmetricKey = new Uint8Array()
-      symmetricKey = fromString(symmetricKeyString, 'base64')
-      console.log("unlock symetricKey: ", symmetricKey)
+    setSymmetricKeyString(symmetricKeyToString)
+    setEncryptedUrl(base64String)
+  }
 
-      const decryptedString = await LitJsSdk.decryptString(
-          blob,
-          symmetricKey
-        );
-      setDecryptedUrl(decryptedString);
+  const mintBookStep2 = async(tokenId: number) => {
+
+    // 6. Set accessControlConditions
+    const accessControlConditions = [
+      {
+        contractAddress: smartContractAddress,
+        standardContractType: 'ERC721',
+        chain,
+        method: 'ownerOf',
+        parameters: [
+          tokenId
+        ],
+        returnValueTest: {
+          comparator: '=',
+          value: ':userAddress'
+        }
+      }
+    ]
+
+    const authSig = await LitJsSdk.checkAndSignAuthMessage({chain})
+    let symmetricKey = new Uint8Array()
+    symmetricKey = fromString(symmetricKeyString, 'base64')
+
+    // 7. get encryptedSymmetricKey from Lit by providing accessControlConditions, symmetricKey, authSig, and chain
+    const encryptedSymmetricKey = await window.litNodeClient.saveEncryptionKey({
+      accessControlConditions,
+      symmetricKey,
+      authSig,
+      chain,
+    })
+
+    // 8. Save a record in Supabase with tokenId, accessControlConditions, and encryptedSymmetricKey
+    let nft = {
+      tokenId,
+      accessControlConditions,
+      encryptedSymmetricKey
     }
+    const result = await fetch('/api/nft', {
+      method: 'POST',
+      body: JSON.stringify({ nft })
+    }).then(response => response.json());
+
+    console.log("result from nft api: ", result)
+  }
+
+  const unlockBook = async(tokenId: number) => {
+
+    // get accessControlCondition and encryptedSymmetricKey from nft table stored in Supabase
+    const { access_control_condition, encrypted_symmetric_key } = await fetch('/api/nft', {
+      method: 'GET',
+      body: JSON.stringify({ tokenId })
+    }).then(response => response.json())
+
+    let accessControlCondition = JSON.parse(access_control_condition)
+    const authSig = await LitJsSdk.checkAndSignAuthMessage({chain})
+
+    let symmetricKey = await window.litNodeClient.getEncryptionKey({
+      accessControlCondition,
+      // Note, below we convert the encryptedSymmetricKey from a UInt8Array to a hex string.  This is because we obtained the encryptedSymmetricKey from "saveEncryptionKey" which returns a UInt8Array.  But the getEncryptionKey method expects a hex string.
+      toDecrypt: LitJsSdk.uint8arrayToString(encrypted_symmetric_key, "base16"),
+      chain,
+      authSig
+    })
+
+    // get the book_url from the nft stored in the smart contract
+    let tokenURI = ''
+    try {
+      tokenURI = await contract.functions.tokenURI(tokenId)
+    } catch (error) {
+      console.log(error)
+    }
+
+    // get the metadata json from tokenURI
+    const metadataJson = await fetch(tokenURI).then((response) => response.json())
+
+    // convert string version to blob
+    const base64Response = await fetch(metadataJson.book_url)
+    const blob = await base64Response.blob()
+
+    const decryptedString = await LitJsSdk.decryptString(
+        blob,
+        symmetricKey
+      );
+    setDecryptedUrl(decryptedString)
+  }
 
   return (
     <>
