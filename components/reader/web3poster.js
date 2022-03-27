@@ -10,16 +10,16 @@ import { v4 as uuid } from "uuid";
 let LENS_HUB_PROXY_CONTRACT_ADDRESS =
   "0xd7B3481De00995046C7850bCe9a5196B7605c367";
 
-const LensPoster = ({ profile }) => {
+const LensPoster = ({ profile, highlightText, cfiRange }) => {
   let [txnHash, setTxnHash] = useState("");
-
+ 
   const createPinata = async () => {
     let metadata = {
       version: "1.0.0",
       name: "Highlight In Book",
       description: "Highlight text imo",
       metadata_id: uuid(),
-      content: "## A BIG FUCKING HIGHLIGHT",
+      content: highlightText, 
       attributes: [
         {
           displayType: "string",
@@ -34,7 +34,7 @@ const LensPoster = ({ profile }) => {
         {
           displayType: "string",
           traitType: "cfiRange",
-          value: "epubfi(a;lskjdfajsjfl)",
+          value: cfiRange, 
         },
         {
           displayType: "string",

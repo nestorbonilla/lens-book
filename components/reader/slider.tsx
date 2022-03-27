@@ -16,6 +16,8 @@ type Props = {
   hide: () => void;
   fetchProfiles: () => void;
   address: string;
+  highlightText: string;
+  cfiRange: string; 
 };
 
 export default function Slider({
@@ -30,6 +32,8 @@ export default function Slider({
   show,
   hide,
   fetchProfiles,
+  cfiRange,
+  highlightText
 }: Props) {
   // const [open, setOpen] = useState(true);
 
@@ -113,7 +117,7 @@ export default function Slider({
                       </button>{" "}
                       {profiles.length > 0 ? "success" : ""}
                     </div>
-                    <Web3Poster profile={profiles[0]} />
+                    <Web3Poster profile={profiles[0]} cfiRange={cfiRange} highlightText={highlightText}/>
 
                     {/* /End replace */}
                   </div>

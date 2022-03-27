@@ -41,7 +41,9 @@ const LensReader = ({ url }: Props) => {
   const [authToken, setAuthToken] = useState<string>("");
   const [profile, setProfile] = useState<string>("");
   const [profiles, setProfiles] = useState<any[]>([]);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [cfiRange, setCfiRange] = useState<string>("");
+  const [highlightText, setHighlightText] = useState<string>("");
 
   const connect = async () => {
     const web3Modal = new Web3Modal();
@@ -211,6 +213,8 @@ const LensReader = ({ url }: Props) => {
         signature={signature}
         authToken={authToken}
         fetchProfiles={fetchProfiles}
+        highlightText={highlightText}
+        cfiRange={cfiRange}
       />
     </div>
   );
