@@ -1,19 +1,35 @@
 import { useEffect, useState } from "react";
 import { apolloClient, setGlobalAuthenticationToken } from "../../utils/apollo";
 import { gql } from "@apollo/client";
-import { useConnect, useAccount, useSignMessage } from "wagmi";
+import { ethers, utils } from "ethers";
+// import { useConnect, useAccount, useSignMessage } from "wagmi";
+// import WalletConnectProvider from "@walletconnect/web3-provider";
 import {
   GET_CHALLENGE,
   AUTHENTICATE,
   FETCH_PROFILES,
   CREATE_PROFILE,
 } from "./LensQueries";
+// const alchemyId = process.env.ALCHEMY_KEY
+import Web3Modal from "web3modal";
 
-import LensPoster from "./LensPoster";
+import Web3Poster from "./web3poster";
 
 type Props = {
   url: string;
 };
+
+// const providerOptions = {
+//   walletconnect: {
+//     package: WalletConnectProvider,
+//     options: {
+//       rpc: {
+//         1: process.env.ALCHEMY_RPC_URL ? process.env.ALCHEMY_RPC_URL : "",
+//       },
+//       qrcode: true,
+//     },
+//   },
+// };
 
 export const useIsMounted = () => {
   const [mounted, setMounted] = useState(false);
@@ -28,14 +44,8 @@ export const useIsMounted = () => {
 const LOCAL_LENS_PROFILE = "lensbook_profile";
 
 const LensReader = ({ url }: Props) => {
-  const [{ data, error }, connect] = useConnect();
-  const [{ data: accountData }, disconnect] = useAccount({
-    fetchEns: true,
-  });
-  const [{ data: signData, error: signError, loading }, signMessage] =
-    useSignMessage();
-
   const isMounted = useIsMounted();
+  const [address, setAddress] = useState<string>("");
   const [challenge, setChallenge] = useState<string>("");
   const [signature, setSignature] = useState<string>("");
   const [refreshToken, setRefreshToken] = useState<string>("");
@@ -43,13 +53,28 @@ const LensReader = ({ url }: Props) => {
   const [profile, setProfile] = useState<string>("");
   const [profiles, setProfiles] = useState<any[]>([]);
 
+  const connect = async () => {
+   
+    const web3Modal = new Web3Modal();
+
+    const instance = await web3Modal.connect();
+
+    console.log("Connected to web3", instance);
+
+    const provider = new ethers.providers.Web3Provider(instance);
+
+    let address = await provider.getSigner().getAddress();
+    console.log("Address got", address);
+    setAddress(address);
+  };
+
   const fetchChallenge = async () => {
-    if (accountData?.address) {
+    if (address) {
       let res = await apolloClient.query({
         query: gql(GET_CHALLENGE),
         variables: {
           request: {
-            address: accountData?.address,
+            address: address,
           },
         },
       });
@@ -77,12 +102,23 @@ const LensReader = ({ url }: Props) => {
 
   const signChallenge = async () => {
     if (challenge) {
-      let res = await signMessage({
-        message: challenge,
-      });
+      const web3Modal = new Web3Modal();
+
+      const instance = await web3Modal.connect();
+
+      console.log("Connected to web3", instance);
+
+      const provider = new ethers.providers.Web3Provider(instance);
+
+      let res = await provider.getSigner().signMessage(challenge);
+
+      // let res = await signMessage({
+      //   message: challenge,
+      // });
+
       console.log("res: ", res);
 
-      let signature = res.data;
+      let signature = res; 
 
       if (signature) {
         setSignature(signature);
@@ -91,7 +127,7 @@ const LensReader = ({ url }: Props) => {
           mutation: gql(AUTHENTICATE),
           variables: {
             request: {
-              address: accountData?.address,
+              address: address,
               signature: signature,
             },
           },
@@ -141,7 +177,7 @@ const LensReader = ({ url }: Props) => {
       query: gql(FETCH_PROFILES),
       variables: {
         request: {
-          ownedBy: [accountData?.address],
+          ownedBy: [address],
           limit: 10,
         },
       },
@@ -153,24 +189,6 @@ const LensReader = ({ url }: Props) => {
     setProfiles(res.data.profiles.items);
   };
 
-  const createPublication = async () => {
-    // let variables = {
-    //   profileId: "0x03",
-    //   contentURI: "ipfs://QmPogtffEF3oAbKERsoR4Ky8aTvLgBF5totp5AuF8YN6vl.json",
-    //   collectModule: {
-    //     emptyCollectModule: true,
-    //   },
-    //   referenceModule: {
-    //     followerOnlyReferenceModule: false,
-    //   },
-    // };
-
-    // let res = await createPost()
-
-    // console.log("Create Post?")
-    // console.log(res);
-    };
-
   const createComment = async () => {};
 
   const createMirror = async () => {};
@@ -179,27 +197,9 @@ const LensReader = ({ url }: Props) => {
     <div className="mx-10">
       <div>Shit Book but with lens!</div>
       <div>
-        <>
-          {!accountData?.address
-            ? data.connectors.map((connector) => (
-                <button
-                  className="m-2 p-3 bg-pink-400 rounded-md"
-                  // disabled={!connector.ready}
-                  key={connector.id}
-                  onClick={() => connect(connector)}
-                >
-                  {isMounted
-                    ? connector.name
-                    : connector.id === "injected"
-                    ? connector.id
-                    : connector.name}
-                </button>
-              ))
-            : null}
-        </>
-        {error && <div>{error?.message ?? "Failed to connect"}</div>}
-
-        <div className="bg-pink-400 p-3 mt-2 rounded-md">{`${accountData?.address}`}</div>
+        <button className="mt-4 bg-purple-500 rounded-md p-2" onClick={connect}>
+          Connect
+        </button>
       </div>
       <div>
         <button
@@ -249,15 +249,7 @@ const LensReader = ({ url }: Props) => {
         </button>
         {/* {!!profile ? "created" : ""} */}
       </div>
-      <div>
-        <button
-          className="mt-4 bg-purple-500 rounded-md p-2"
-          onClick={createPublication}
-        >
-          Create Publication
-        </button>
-        {/* {challenge ? "success" : ""} */}
-      </div>
+      
       <div>
         <button
           className="mt-4 bg-purple-500 rounded-md p-2"
@@ -275,8 +267,9 @@ const LensReader = ({ url }: Props) => {
           Create Mirror
         </button>
         {/* {challenge ? "success" : ""} */}
-        <LensPoster profile={profiles[0]} />
+       
       </div>
+      <Web3Poster profile={profiles[0]} />
     </div>
   );
 };

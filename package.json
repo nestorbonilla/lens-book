@@ -17,16 +17,21 @@
     "@openzeppelin/contracts": "^4.5.0",
     "@pinata/sdk": "^1.1.23",
     "@supabase/supabase-js": "^1.32.1",
+    "@types/omit-deep-lodash": "^1.1.1",
+    "@walletconnect/web3-provider": "^1.7.5",
+    "dotenv": "^16.0.0",
     "epubjs": "^0.3.93",
     "graphql": "^16.3.0",
-    "dotenv": "^16.0.0",
     "lit-js-sdk": "^1.1.153",
     "next": "12.1.1",
+    "omit-deep": "^0.3.0",
+    "omit-deep-lodash": "^1.1.6",
     "react": "17.0.2",
     "react-dom": "17.0.2",
     "react-reader": "^0.20.6",
     "uint8arrays": "^3.0.0",
-    "wagmi": "^0.2.21"
+    "wagmi": "^0.2.21",
+    "web3modal": "^1.9.5"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
