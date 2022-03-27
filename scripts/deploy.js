@@ -26,7 +26,7 @@ async function main() {
   await bookV1.connect(admin).setBaseURI('https://alexandrialabs.mypinata.cloud/ipfs/');
 
   console.log("Author create a new book struct...");
-  await bookV1.connect(author).setBook(15);
+  await bookV1.connect(author).setBook(100);
 
   console.log("Smart contract ready to mint nfts of book 1...");
 

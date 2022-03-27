@@ -7,17 +7,20 @@ import { Dialog, Transition } from '@headlessui/react'
 import { CheckIcon } from '@heroicons/react/outline'
 import { Layout } from '@components/common'
 import { supabase } from '../../utils/supabase'
-import { useContractWrite, useContractEvent, useContract, useSigner } from 'wagmi'
+import { useContractWrite, useContractEvent, useContract, useSigner, useProvider } from 'wagmi'
 import LitJsSdk from 'lit-js-sdk'
 import { toString } from 'uint8arrays/to-string'
 import { fromString } from 'uint8arrays/from-string'
 import BookABI from '../../contracts/BookABI.json'
+import { ethers } from 'ethers'
 
 export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticProps>) {
 
+  let trialNo = 6
   let chain = 'mumbai'
-  let smartContractAddress = '0x302B195Fe77b68652326E26E6C430338cC3bAF47'
+  let smartContractAddress = '0x8Ad784f1d34c0e7CCba9257678CA5Ea311542b0E'
   const [{data: signerData}] = useSigner()
+  // const provider = useProvider()
   const contract = useContract({
     addressOrName: smartContractAddress,
     contractInterface: BookABI,
@@ -38,31 +41,26 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
       contractInterface: BookABI,
     },
     'MintedBookNFT',
-    (event) => {
-      console.log("hey: ", event)
-      mintBookStep2(1)
-    },
+    (event) => console.log("hey it lives!: ", event),
   )
 
   let [encryptedUrl, setEncryptedUrl] = useState("")
   let [decryptedUrl, setDecryptedUrl] = useState("")
   let [symmetricKeyString, setSymmetricKeyString] = useState("")
   
-
   useEffect(() => {
       var litNodeClient = new LitJsSdk.LitNodeClient()
       litNodeClient.connect()
       window.litNodeClient = litNodeClient
-      console.log('Lit ready')
   }, [])
 
   const convertBlobToBase64 = (blob: Blob) => new Promise((resolve, reject) => {
-      const reader = new FileReader;
-      reader.onerror = reject;
+      const reader = new FileReader
+      reader.onerror = reject
       reader.onload = () => {
-          resolve(reader.result);
+          resolve(reader.result)
       };
-      reader.readAsDataURL(blob);
+      reader.readAsDataURL(blob)
   });
   
   const mintBookStep1 = async(bookId: number) => {
@@ -113,7 +111,7 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
       body: JSON.stringify({ metadata, options })
     }).then(response => response.json());
 
-    console.log("nft metadata: ", ipfsHash)
+    // console.log("nft metadata: ", ipfsHash)
       
     // 5. Mint NFT with the encryptedString and get tokenId
     await write({args: [bookId, ipfsHash]})
@@ -132,7 +130,7 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
         chain,
         method: 'ownerOf',
         parameters: [
-          tokenId
+          tokenId.toString()
         ],
         returnValueTest: {
           comparator: '=',
@@ -153,35 +151,35 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
       chain,
     })
 
+    let encryptedSymmetricKeyToString = toString(encryptedSymmetricKey, 'base64')
+
     // 8. Save a record in Supabase with tokenId, accessControlConditions, and encryptedSymmetricKey
     let nft = {
       tokenId,
       accessControlConditions,
-      encryptedSymmetricKey
+      encryptedSymmetricKey: encryptedSymmetricKeyToString
     }
-    const result = await fetch('/api/nft', {
+    await fetch('/api/setNFT', {
       method: 'POST',
       body: JSON.stringify({ nft })
-    }).then(response => response.json());
-
-    console.log("result from nft api: ", result)
+    }).then(response => response.json())
   }
 
   const unlockBook = async(tokenId: number) => {
 
-    // get accessControlCondition and encryptedSymmetricKey from nft table stored in Supabase
-    const { access_control_condition, encrypted_symmetric_key } = await fetch('/api/nft', {
-      method: 'GET',
-      body: JSON.stringify({ tokenId })
-    }).then(response => response.json())
-
-    let accessControlCondition = JSON.parse(access_control_condition)
     const authSig = await LitJsSdk.checkAndSignAuthMessage({chain})
 
+    // get accessControlCondition and encryptedSymmetricKey from nft table stored in Supabase
+    const { book: dbBook } = await fetch(`/api/getNFT?tokenId=${trialNo}`).then(response => response.json())
+    
+    let accessControlConditions = JSON.parse(dbBook.access_control_condition)
+
+    let unlockEncryptedSymmetricKey = fromString(dbBook.encrypted_symmetric_key, 'base64')
+
     let symmetricKey = await window.litNodeClient.getEncryptionKey({
-      accessControlCondition,
+      accessControlConditions,
       // Note, below we convert the encryptedSymmetricKey from a UInt8Array to a hex string.  This is because we obtained the encryptedSymmetricKey from "saveEncryptionKey" which returns a UInt8Array.  But the getEncryptionKey method expects a hex string.
-      toDecrypt: LitJsSdk.uint8arrayToString(encrypted_symmetric_key, "base16"),
+      toDecrypt: LitJsSdk.uint8arrayToString(unlockEncryptedSymmetricKey, "base16"),
       chain,
       authSig
     })
@@ -253,7 +251,14 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
             Mint Book
         </button>
         <button
-            onClick={() => {unlockBook(book.id)}}
+            onClick={() => {mintBookStep2(trialNo)}}
+            className="inline-flex items-center px-4 py-2 m-5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-lensGreen-600 hover:bg-lensGreen-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lensGreen-500"
+        >
+            <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
+            Force step 2
+        </button>
+        <button
+            onClick={() => {unlockBook(trialNo)}}
             className="inline-flex items-center px-4 py-2 m-5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-lensGreen-600 hover:bg-lensGreen-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lensGreen-500"
         >
             <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />

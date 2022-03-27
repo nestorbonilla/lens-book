@@ -8,19 +8,8 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 
-  const { nft } = JSON.parse(req.body)
+  const { tokenId } = req.query
+  const { data: book } = await supabase.from('nft').select('*').eq('token_id', tokenId).single()
 
-  // Insert a row
-  const { data, error } = await supabase
-  .from('nft')
-  .insert([
-      {
-        token_id: nft.tokenId,
-        access_control_condition: nft.accessControlCondition,
-        encrypted_symmetric_key: nft.encryptedSymmetricKey
-      }
-  ]);
-
-  console.log(data, error);
-    
+  res.status(200).json({ book })
 }
