@@ -2,33 +2,12 @@ import { useEffect, useState } from "react";
 import { apolloClient, setGlobalAuthenticationToken } from "../../utils/apollo";
 import { gql } from "@apollo/client";
 import { useConnect, useAccount, useSignMessage } from "wagmi";
-
-const GET_CHALLENGE = `
-  query($request: ChallengeRequest!) {
-    challenge(request: $request) { text }
-  }
-`;
-
-const AUTHENTICATE = `
-mutation($request: SignedAuthChallenge!) {
-  authenticate(request: $request) {
-    accessToken
-    refreshToken
-  }
-}`;
-
-const CREATE_PROFILE = `
-mutation ($request: CreateProfileRequest!) {
-  createProfile(request: $request) {
-    ... on RelayerResult {
-      txHash
-    }
-    ... on RelayError {
-      reason
-    }
-    __typename
-    }  
-}`;
+import {
+  GET_CHALLENGE,
+  AUTHENTICATE,
+  FETCH_PROFILES,
+  CREATE_PROFILE,
+} from "./LensQueries";
 
 type Props = {
   url: string;
@@ -44,6 +23,8 @@ export const useIsMounted = () => {
   return mounted;
 };
 
+const LOCAL_LENS_PROFILE = "lensbook_profile";
+
 const LensReader = ({ url }: Props) => {
   const [{ data, error }, connect] = useConnect();
   const [{ data: accountData }, disconnect] = useAccount({
@@ -57,7 +38,9 @@ const LensReader = ({ url }: Props) => {
   const [signature, setSignature] = useState<string>("");
   const [refreshToken, setRefreshToken] = useState<string>("");
   const [authToken, setAuthToken] = useState<string>("");
-  const [prfole, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<string>("");
+  const [profiles, setProfiles] = useState<any[]>([]);
+
   const fetchChallenge = async () => {
     if (accountData?.address) {
       let res = await apolloClient.query({
@@ -78,6 +61,17 @@ const LensReader = ({ url }: Props) => {
       alert("Please connect wallet");
     }
   };
+
+  //hydrate
+  useEffect(() => {
+    if (window.localStorage) {
+      let previousState = window.localStorage.getItem(LOCAL_LENS_PROFILE);
+      if (previousState) {
+        console.log("Hydrationg state" + previousState);
+        setProfile(previousState);
+      }
+    }
+  }, []);
 
   const signChallenge = async () => {
     if (challenge) {
@@ -113,29 +107,62 @@ const LensReader = ({ url }: Props) => {
   };
 
   const createProfile = async () => {
-    let variables = {
-      request: {
-        handle: "carlos",
-        profilePictureUri: `https://pbs.twimg.com/profile_images/1380979602076667904/7NIW3Cyt_400x400.jpg`,
-        followNFTURI: null,
-        followModule: null,
-      },
-    };
+    if (!profile) {
+      let variables = {
+        request: {
+          handle: "carloss",
+          profilePictureUri: `https://pbs.twimg.com/profile_images/1380979602076667904/7NIW3Cyt_400x400.jpg`,
+          followNFTURI: null,
+          followModule: null,
+        },
+      };
 
-    let res = await apolloClient.mutate({
-      mutation: gql(CREATE_PROFILE),
-      variables,
-    });
+      let res = await apolloClient.mutate({
+        mutation: gql(CREATE_PROFILE),
+        variables,
+      });
 
-    if (res) {
-      console.log("Profile created: ", res);
-      setProfile(res.data);
+      if (res) {
+        console.log("Profile created: ", res);
+        setProfile(res.data);
+        window.localStorage.setItem(LOCAL_LENS_PROFILE, res.data);
+      } else {
+        console.log("No profile created....");
+      }
     } else {
-      console.log("No profile created....");
+      alert("We already have a profiel");
     }
   };
 
-  const createPublication = async () => {};
+  const fetchProfiles = async () => {
+    let res = await apolloClient.query({
+      query: gql(FETCH_PROFILES),
+      variables: {
+        request: {
+          ownedBy: [accountData?.address],
+          limit: 10,
+        },
+      },
+    });
+
+    console.log("Results from fetch profiles");
+    console.log(res);
+
+    setProfiles(res.data.profiles.items);
+  };
+
+  const createPublication = async () => {
+    let variables = {
+      profileId: "0x03",
+      contentURI: "ipfs://QmPogtffEF3oAbKERsoR4Ky8aTvLgBF5totp5AuF8YN6vl.json",
+      collectModule: {
+        emptyCollectModule: true,
+      },
+      referenceModule: {
+        followerOnlyReferenceModule: false,
+      },
+    };
+  };
 
   const createComment = async () => {};
 
@@ -197,12 +224,23 @@ const LensReader = ({ url }: Props) => {
       </div> */}
       <div>
         <button
+          disabled={!!profile}
           className="mt-4 bg-purple-500 rounded-md p-2"
           onClick={createProfile}
         >
           Create Profile
         </button>
-        {/* {challenge ? "success" : ""} */}
+        {!!profile ? "created" : ""}
+      </div>
+      <div>
+        <button
+          // disabled={!!profile}
+          className="mt-4 bg-purple-500 rounded-md p-2"
+          onClick={fetchProfiles}
+        >
+          Fetch Profiles
+        </button>
+        {/* {!!profile ? "created" : ""} */}
       </div>
       <div>
         <button
