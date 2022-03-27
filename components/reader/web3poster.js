@@ -5,6 +5,7 @@ import Web3Modal from "web3modal";
 import LENS_HUB_ABI from "./lenshubabi.json";
 import * as omitDeep from "omit-deep-lodash";
 import { v4 as uuid } from "uuid";
+import Link from "next/link";
 
 //validated by a guy in discord
 let LENS_HUB_PROXY_CONTRACT_ADDRESS =
@@ -144,6 +145,11 @@ const LensPoster = ({ profile, highlightText, cfiRange }) => {
         Create Publication
       </button>
       {txnHash ? txnHash : ""}
+      {txnHash ? (
+        <Link href="/club" passHref>
+          <div className="bg-green-500 p-3 m-3 rounded-md">Go to Book Club</div>
+        </Link>
+      ) : null}
     </div>
   );
 };
