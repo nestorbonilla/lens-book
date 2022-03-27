@@ -1,4 +1,9 @@
-const Post = ({ text }: { text: string }) => {
+import { useState, useEffect } from "react";
+import { GET_PUBLICATIONS } from "../../components/reader/LensQueries";
+import { apolloClient, setGlobalAuthenticationToken } from "../../utils/apollo";
+import { gql } from "@apollo/client";
+
+const Post = ({ post }: { post: any }) => {
   return (
     <div className="flex mt-2 border border-grey-light-alt hover:border-grey rounded bg-white cursor-pointer">
       <div className="w-1/12 flex flex-col text-center pt-2">
@@ -40,8 +45,7 @@ const Post = ({ text }: { text: string }) => {
         </div>
         <div>
           <h2 className="text-lg font-medium mb-1">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse
-            tempor placerat turpis eu semper.
+            {post.metadata.attributes[3].value}
           </h2>
         </div>
         <div className="inline-flex items-center my-1">
@@ -92,7 +96,33 @@ const Post = ({ text }: { text: string }) => {
   );
 };
 
-const club = () => {
+const club = ({}) => {
+  const [posts, setPosts] = useState<any[]>([]);
+
+  const fetchPosts = async () => {
+    let res = await apolloClient.query({
+      query: gql(GET_PUBLICATIONS),
+      variables: {
+        request: {
+          profileId: "0x03b5", // or 0x03a8
+          publicationTypes: ["POST", "COMMENT", "MIRROR"],
+        },
+      },
+    });
+
+    if (res) {
+      // let text = res.data.challenge.text;
+      console.log(res);
+      setPosts(res.data.publications.items);
+    } else {
+      console.log("No Posts!");
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
   return (
     <div className="flex bg-blue-lightest flex-col font-sans">
       <div className="mt-12">
@@ -202,8 +232,8 @@ const club = () => {
             <div className="">
               <div className="py-2">
                 {/* component? */}
-                {[1, 2, 3].map((post, index) => {
-                  return <Post key={index} />;
+                {posts.map((post, index) => {
+                  return <Post key={index} post={post} />;
                 })}
                 {/* end component */}
               </div>
@@ -229,7 +259,7 @@ const club = () => {
 									<div className="flex items-center">
 										<svg className="h-6 w-6 mr-4 text-orange fill-current" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><title>Reddit Premium</title><path d="M13.535 15.785c-1.678.244-2.883.742-3.535 1.071v-5.113a2 2 0 0 0-2-2H4.217c.044-.487.076-1.016.076-1.629 0-1.692-.489-2.968-.884-3.722L4.8 3.001H10v4.742a2 2 0 0 0 2 2h3.783c.06.67.144 1.248.22 1.742.097.632.182 1.177.182 1.745 0 1.045-.829 2.291-2.65 2.555m5.028-12.249l-2.242-2.242a1 1 0 0 0-.707-.293H4.386a1 1 0 0 0-.707.293L1.436 3.536a1 1 0 0 0-.069 1.337c.009.011.926 1.2.926 3.241 0 1.304-.145 2.24-.273 3.065-.106.684-.206 1.33-.206 2.051 0 1.939 1.499 4.119 4.364 4.534 2.086.304 3.254 1.062 3.261 1.065a1.016 1.016 0 0 0 1.117.004c.011-.007 1.18-.765 3.266-1.069 2.864-.415 4.363-2.595 4.363-4.534 0-.721-.099-1.367-.206-2.051-.128-.825-.272-1.761-.272-3.065 0-2.033.893-3.199.926-3.241a.999.999 0 0 0-.07-1.337"></path></svg>
 										<div className="flex flex-col">
-											<span className="text-xs font-medium text-black-alt mb-1">Reddit Premium</span>
+							 				<span className="text-xs font-medium text-black-alt mb-1">Reddit Premium</span>
 											<span className="text-xxs font-normal">Ads-free browsing</span>
 										</div>
 										<div className="flex ml-auto">
