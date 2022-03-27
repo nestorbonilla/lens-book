@@ -12,10 +12,9 @@ import "hardhat/console.sol";
 
 contract BookV1 is ERC721URIStorage, Ownable {
     event MintedBookNFT(
-        uint256 collectionBookIds,
+        address indexed minter,
         uint256 indexed bookId,
-        uint256 indexed tokenId,
-        address indexed minter
+        uint256 indexed tokenId
     );
     using Counters for Counters.Counter;
 
@@ -109,10 +108,9 @@ contract BookV1 is ERC721URIStorage, Ownable {
         _setTokenURI(tokenIds.current(), ipfsHash);
 
         emit MintedBookNFT(
-            _collectionBookId,
+            msg.sender,
             _currentBookId.current(),
-            tokenIds.current(),
-            msg.sender
+            tokenIds.current()
         );
     }
 

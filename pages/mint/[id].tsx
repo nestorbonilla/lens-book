@@ -12,36 +12,48 @@ import LitJsSdk from 'lit-js-sdk'
 import { toString } from 'uint8arrays/to-string'
 import { fromString } from 'uint8arrays/from-string'
 import BookABI from '../../contracts/BookABI.json'
-import { ethers } from 'ethers'
+import { createAlchemyWeb3 } from '@alch/alchemy-web3'
 
 export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticProps>) {
 
-  let trialNo = 6
   let chain = 'mumbai'
-  let smartContractAddress = '0x8Ad784f1d34c0e7CCba9257678CA5Ea311542b0E'
+  let smartContractAddress = '0x74bd23232205e115dAc2400FD82D1386d60c5faa'
   const [{data: signerData}] = useSigner()
-  // const provider = useProvider()
   const contract = useContract({
     addressOrName: smartContractAddress,
     contractInterface: BookABI,
     signerOrProvider: signerData,
   })
 
+  const web3 = createAlchemyWeb3(process.env.NEXT_PUBLIC_ALCHEMY_WS)
+
+  const bookContract = new web3.eth.Contract(
+    BookABI,
+    smartContractAddress
+  );
+
+  function addSmartContractListener() {
+    bookContract.events.MintedBookNFT({}, (error, data) => {
+      if (error) {
+        console.log("😥 " + error.message);
+      } else {
+        console.log("hey there", data.returnValues[1])
+        let myNewTokenId = Number(data.returnValues[1])
+        setNewTokenId(myNewTokenId)
+      }
+    });
+  }
+  
+  const [newTokenId, setNewTokenId] = useState<any>(0)
+  const [mintingStep, setMintingStep] = useState<any>(1)
+
   const [{ data: dataWrite, error: errorWrite, loading: loadingWrite }, write] = useContractWrite(
     {
       addressOrName: smartContractAddress,
       contractInterface: BookABI,
+      signerOrProvider: signerData
     },
     'mint'
-  )
-
-  useContractEvent(
-    {
-      addressOrName: smartContractAddress,
-      contractInterface: BookABI,
-    },
-    'MintedBookNFT',
-    (event) => console.log("hey it lives!: ", event),
   )
 
   let [encryptedUrl, setEncryptedUrl] = useState("")
@@ -52,7 +64,18 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
       var litNodeClient = new LitJsSdk.LitNodeClient()
       litNodeClient.connect()
       window.litNodeClient = litNodeClient
+      addSmartContractListener()
   }, [])
+
+  useEffect(() => {
+    console.log('newTokenId has been updated')
+    console.log('newTokenId: ', newTokenId)
+    console.log('minting step: ', mintingStep)
+    // if (mintingStep == 1) {
+      mintBookStep2(newTokenId)
+      // setMintingStep(2)
+    // }
+  }, [newTokenId])
 
   const convertBlobToBase64 = (blob: Blob) => new Promise((resolve, reject) => {
       const reader = new FileReader
@@ -65,7 +88,7 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
   
   const mintBookStep1 = async(bookId: number) => {
 
-    console.log('Starting to mint a new nft from book: ', bookId)
+    console.log('Mint Book step 1 for book: ', bookId)
 
     // 1. Get authSig from the account selected in Metamask
     const authSig = await LitJsSdk.checkAndSignAuthMessage({chain})
@@ -122,6 +145,8 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
 
   const mintBookStep2 = async(tokenId: number) => {
 
+    console.log('Mint Book step 2 for tokenId: ', tokenId)
+
     // 6. Set accessControlConditions
     const accessControlConditions = [
       {
@@ -163,6 +188,8 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
       method: 'POST',
       body: JSON.stringify({ nft })
     }).then(response => response.json())
+
+    setMintingStep(1)
   }
 
   const unlockBook = async(tokenId: number) => {
@@ -170,7 +197,7 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
     const authSig = await LitJsSdk.checkAndSignAuthMessage({chain})
 
     // get accessControlCondition and encryptedSymmetricKey from nft table stored in Supabase
-    const { book: dbBook } = await fetch(`/api/getNFT?tokenId=${trialNo}`).then(response => response.json())
+    const { book: dbBook } = await fetch(`/api/getNFT?tokenId=${newTokenId}`).then(response => response.json())
     
     let accessControlConditions = JSON.parse(dbBook.access_control_condition)
 
@@ -250,15 +277,15 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
             <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
             Mint Book
         </button>
-        <button
+        {/* <button
             onClick={() => {mintBookStep2(trialNo)}}
             className="inline-flex items-center px-4 py-2 m-5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-lensGreen-600 hover:bg-lensGreen-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lensGreen-500"
         >
             <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
             Force step 2
-        </button>
+        </button> */}
         <button
-            onClick={() => {unlockBook(trialNo)}}
+            onClick={() => {unlockBook(newTokenId)}}
             className="inline-flex items-center px-4 py-2 m-5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-lensGreen-600 hover:bg-lensGreen-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lensGreen-500"
         >
             <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
