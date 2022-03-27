@@ -1,37 +1,25 @@
-import type { GetStaticPaths, GetStaticPropsContext, NextPage } from "next";
-import Image from "next/image";
-import { InferGetStaticPropsType } from "next";
-import { PaperClipIcon, PlusIcon } from "@heroicons/react/solid";
-import { Fragment, useState, useEffect } from "react";
-import { Dialog, Transition } from "@headlessui/react";
-import { CheckIcon } from "@heroicons/react/outline";
-import { Layout } from "@components/common";
-import { supabase } from "../../utils/supabase";
-import {
-  useContractWrite,
-  useContractEvent,
-  useContract,
-  useSigner,
-  useProvider,
-} from "wagmi";
-import LitJsSdk from "lit-js-sdk";
-import { toString } from "uint8arrays/to-string";
-import { fromString } from "uint8arrays/from-string";
-import BookABI from "../../contracts/BookABI.json";
-import { createAlchemyWeb3 } from "@alch/alchemy-web3";
-import Link from "next/link";
+import type { GetStaticPaths, GetStaticPropsContext, NextPage } from 'next'
+import Image from 'next/image'
+import { InferGetStaticPropsType } from 'next'
+import { PaperClipIcon, PlusIcon } from '@heroicons/react/solid'
+import { Fragment, useState, useEffect } from 'react'
+import { Dialog, Transition } from '@headlessui/react'
+import { CheckIcon } from '@heroicons/react/outline'
+import { Layout } from '@components/common'
+import { supabase } from '../../utils/supabase'
+import { useContractWrite, useContractEvent, useContract, useSigner, useProvider } from 'wagmi'
+import LitJsSdk from 'lit-js-sdk'
+import { toString } from 'uint8arrays/to-string'
+import { fromString } from 'uint8arrays/from-string'
+import BookABI from '../../contracts/BookABI.json'
+import { createAlchemyWeb3 } from '@alch/alchemy-web3'
+import Link from 'next/link'; 
 
-export default function Mint({
-  book,
-}: InferGetStaticPropsType<typeof getStaticProps>) {
-  let chain = "mumbai";
-  let smartContractAddress = "0x74bd23232205e115dAc2400FD82D1386d60c5faa";
-  const [{ data: signerData }] = useSigner();
-  const contract = useContract({
-    addressOrName: smartContractAddress,
-    contractInterface: BookABI,
-    signerOrProvider: signerData,
-  });
+export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticProps>) {
+
+  let chain = 'mumbai'
+  let smartContractAddress = process.env.NEXT_PUBLIC_BOOK_SMART_CONTRACT
+  const [{data: signerData}] = useSigner()
 
   const web3 = createAlchemyWeb3(process.env.NEXT_PUBLIC_ALCHEMY_WS);
 
@@ -42,12 +30,23 @@ export default function Mint({
       if (error) {
         console.log("😥 " + error.message);
       } else {
-        console.log("hey there", data.returnValues[1]);
-        let myNewTokenId = Number(data.returnValues[1]);
-        setNewTokenId(myNewTokenId);
+        // console.log("hey there", data.returnValues[1])
+        let myNewTokenId = Number(data.returnValues[1])
+        setNewTokenId(myNewTokenId)
       }
     });
   }
+  
+  const [newTokenId, setNewTokenId] = useState<any>(0)
+
+  const [{ data: dataWrite, error: errorWrite, loading: loadingWrite }, write] = useContractWrite(
+    {
+      addressOrName: smartContractAddress,
+      contractInterface: BookABI,
+      signerOrProvider: signerData
+    },
+    'mint'
+  )
 
   const [newTokenId, setNewTokenId] = useState<any>(0);
   const [mintingStep, setMintingStep] = useState<any>(1);
@@ -74,14 +73,10 @@ export default function Mint({
   }, []);
 
   useEffect(() => {
-    console.log("newTokenId has been updated");
-    console.log("newTokenId: ", newTokenId);
-    console.log("minting step: ", mintingStep);
-    // if (mintingStep == 1) {
-    mintBookStep2(newTokenId);
-    // setMintingStep(2)
-    // }
-  }, [newTokenId]);
+    console.log('newTokenId has been updated')
+    console.log('newTokenId: ', newTokenId)
+    mintBookStep2(newTokenId)
+  }, [newTokenId])
 
   const convertBlobToBase64 = (blob: Blob) =>
     new Promise((resolve, reject) => {
@@ -111,11 +106,8 @@ export default function Mint({
       book.epub_ipfs
     );
 
-    // 3.1 symmetricKey is an Uint8Array, so we need a string version to store it
-    let symmetricKeyToString = toString(symmetricKey, "base64");
-
-    // 3.2 encryptedString is a Blob, so we need a string version to store it
-    let base64String = await convertBlobToBase64(encryptedString);
+    // 3.1 encryptedString is a Blob, so we need a string version to store it
+    let base64String = await convertBlobToBase64(encryptedString)
 
     // 4. create metadata
 
@@ -148,12 +140,13 @@ export default function Mint({
 
     // console.log("nft metadata: ", ipfsHash)
 
-    // 5. Mint NFT with the encryptedString and get tokenId
-    await write({ args: [bookId, ipfsHash] });
+    // 5.1 symmetricKey is an Uint8Array, so we need a string version to store it
+    let symmetricKeyToString = toString(symmetricKey, 'base64')
 
-    setSymmetricKeyString(symmetricKeyToString);
-    setEncryptedUrl(base64String);
-  };
+    setSymmetricKeyString(symmetricKeyToString)
+    setEncryptedUrl(base64String)
+
+
 
   const mintBookStep2 = async (tokenId: number) => {
     console.log("Mint Book step 2 for tokenId: ", tokenId);
@@ -201,18 +194,20 @@ export default function Mint({
       body: JSON.stringify({ nft }),
     }).then((response) => response.json());
 
-    setMintingStep(1);
-  };
+  }
 
-  const unlockBook = async (tokenId: number) => {
-    const authSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
+  const unlockBook = async() => {
 
+    const authSig = await LitJsSdk.checkAndSignAuthMessage({chain})
+
+    console.log("unlock => tokenId: ", newTokenId)
     // get accessControlCondition and encryptedSymmetricKey from nft table stored in Supabase
-    const { book: dbBook } = await fetch(
-      `/api/getNFT?tokenId=${newTokenId}`
-    ).then((response) => response.json());
-
-    let accessControlConditions = JSON.parse(dbBook.access_control_condition);
+    const getNFTUrl = `/api/getNFT?tokenId=${newTokenId}`
+    console.log("unlock => NFTUrl: ", getNFTUrl)
+    const { book: dbBook } = await fetch(getNFTUrl).then(response => response.json())
+    console.log("unlock => book: ", dbBook)
+    
+    let accessControlConditions = JSON.parse(dbBook.access_control_condition)
 
     let unlockEncryptedSymmetricKey = fromString(
       dbBook.encrypted_symmetric_key,
@@ -230,18 +225,20 @@ export default function Mint({
       authSig,
     });
 
+    console.log("unlock => before tokenURI.")
+
     // get the book_url from the nft stored in the smart contract
     let tokenURI = "";
     try {
-      tokenURI = await contract.functions.tokenURI(tokenId);
+      tokenURI = await bookContract.methods.tokenURI(newTokenId).call();
+      console.log('tokenURI: ', tokenURI)
     } catch (error) {
       console.log(error);
     }
 
     // get the metadata json from tokenURI
-    const metadataJson = await fetch(tokenURI).then((response) =>
-      response.json()
-    );
+    const metadataJson = await fetch(tokenURI).then((response) => response.json())
+    console.log('metadata: ', metadataJson)
 
     // convert string version to blob
     const base64Response = await fetch(metadataJson.book_url);
@@ -297,12 +294,12 @@ export default function Mint({
               </dd>
             </div>
             <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">
-                IPFS decrypted
-              </dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {decryptedUrl}
-              </dd>
+              <dt className="text-sm font-medium text-gray-500">Token Id</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{newTokenId}</dd>
+            </div>
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">IPFS decrypted</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{decryptedUrl}</dd>
             </div>
           </dl>
         </div>
@@ -317,13 +314,6 @@ export default function Mint({
           <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
           Mint Book
         </button>
-        {/* <button
-            onClick={() => {mintBookStep2(trialNo)}}
-            className="inline-flex items-center px-4 py-2 m-5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-lensGreen-600 hover:bg-lensGreen-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lensGreen-500"
-        >
-            <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-            Force step 2
-        </button> */}
         <button
           onClick={() => {
             unlockBook(newTokenId);
@@ -345,7 +335,7 @@ export default function Mint({
 
 Mint.Layout = Layout;
 
-export const getStaticPaths = async () => {
+const getStaticPaths = async () => {
   const { data: books } = await supabase.from("book").select("bookId");
   const paths = books?.map(({ bookId }) => ({
     params: {
@@ -358,18 +348,18 @@ export const getStaticPaths = async () => {
   };
 };
 
-export const getStaticProps = async ({
-  params,
-}: GetStaticPropsContext<{ id: string }>) => {
-  const { data: book } = await supabase
-    .from("book")
-    .select("*")
-    .eq("id", params?.id)
-    .single();
-  return {
-    props: {
-      book,
-    },
-    revalidate: 4 * 6 * 60,
-  };
-};
+  const getStaticProps = async ({
+    params,
+  }: GetStaticPropsContext<{ id: string }>) => {
+    const { data: book } = await supabase
+      .from("book")
+      .select("*")
+      .eq("id", params?.id)
+      .single();
+    return {
+      props: {
+        book,
+      },
+      revalidate: 4 * 6 * 60,
+    };
+  }); 
