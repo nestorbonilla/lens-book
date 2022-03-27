@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { apolloClient, setGlobalAuthenticationToken } from "../../utils/apollo";
 import { gql } from "@apollo/client";
-import { ethers, utils } from "ethers";
-// import { useConnect, useAccount, useSignMessage } from "wagmi";
-// import WalletConnectProvider from "@walletconnect/web3-provider";
+import { ethers } from "ethers";
 import {
   GET_CHALLENGE,
   AUTHENTICATE,
@@ -12,24 +10,15 @@ import {
 } from "./LensQueries";
 // const alchemyId = process.env.ALCHEMY_KEY
 import Web3Modal from "web3modal";
+import { MenuIcon } from "@heroicons/react/outline";
 
 import Web3Poster from "./web3poster";
+import Slider from "./slider";
+import { ReactReader } from "react-reader";
 
 type Props = {
   url: string;
 };
-
-// const providerOptions = {
-//   walletconnect: {
-//     package: WalletConnectProvider,
-//     options: {
-//       rpc: {
-//         1: process.env.ALCHEMY_RPC_URL ? process.env.ALCHEMY_RPC_URL : "",
-//       },
-//       qrcode: true,
-//     },
-//   },
-// };
 
 export const useIsMounted = () => {
   const [mounted, setMounted] = useState(false);
@@ -52,9 +41,9 @@ const LensReader = ({ url }: Props) => {
   const [authToken, setAuthToken] = useState<string>("");
   const [profile, setProfile] = useState<string>("");
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [open, setOpen] = useState(true);
 
   const connect = async () => {
-   
     const web3Modal = new Web3Modal();
 
     const instance = await web3Modal.connect();
@@ -112,13 +101,10 @@ const LensReader = ({ url }: Props) => {
 
       let res = await provider.getSigner().signMessage(challenge);
 
-      // let res = await signMessage({
-      //   message: challenge,
-      // });
 
       console.log("res: ", res);
 
-      let signature = res; 
+      let signature = res;
 
       if (signature) {
         setSignature(signature);
@@ -189,87 +175,43 @@ const LensReader = ({ url }: Props) => {
     setProfiles(res.data.profiles.items);
   };
 
-  const createComment = async () => {};
-
-  const createMirror = async () => {};
 
   return (
-    <div className="mx-10">
-      <div>Shit Book but with lens!</div>
-      <div>
-        <button className="mt-4 bg-purple-500 rounded-md p-2" onClick={connect}>
-          Connect
-        </button>
-      </div>
-      <div>
+    <div style={{ height: "100vh" }}>
+      <ReactReader
+        url={"https://gerhardsletten.github.io/react-reader/files/alice.epub"}
+      />
+       {!open && (
         <button
-          className="mt-4 bg-purple-500 rounded-md p-2"
-          onClick={fetchChallenge}
+          type="button"
+          className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:ring-2 focus:ring-indigo-500"
+          onClick={() => setOpen(true)}
         >
-          Fetch Challenge
-        </button>{" "}
-        {challenge ? "success" : ""}
-      </div>
-      <div>
-        <button
-          className="mt-4 bg-purple-500 rounded-md p-2"
-          onClick={signChallenge}
-        >
-          Sign Challenge
-        </button>{" "}
-        {signature && authToken ? "success" : ""}
-      </div>
-
-      {/* <div>
-        <button // do some other day. or never. 
-          className="mt-4 bg-purple-500 rounded-md p-2"
-          onClick={refreshToken}
-        >
-          Refresh Token
+          <MenuIcon
+            className="h-6 w-6"
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              top: "1rem",
+              right: "1rem",
+              zIndex: 100,
+            }}
+          />
         </button>
-        {challenge ? "success" : ""}
-      </div> */}
-      <div>
-        <button
-          disabled={!!profile}
-          className="mt-4 bg-purple-500 rounded-md p-2"
-          onClick={createProfile}
-        >
-          Create Profile
-        </button>
-        {!!profile ? "created" : ""}
-      </div>
-      <div>
-        <button
-          // disabled={!!profile}
-          className="mt-4 bg-purple-500 rounded-md p-2"
-          onClick={fetchProfiles}
-        >
-          Fetch Profiles
-        </button>
-        {/* {!!profile ? "created" : ""} */}
-      </div>
-      
-      <div>
-        <button
-          className="mt-4 bg-purple-500 rounded-md p-2"
-          onClick={createComment}
-        >
-          Create Comment
-        </button>
-        {/* {challenge ? "success" : ""} */}
-      </div>
-      <div>
-        <button
-          className="mt-4 bg-purple-500 rounded-md p-2"
-          onClick={createMirror}
-        >
-          Create Mirror
-        </button>
-        {/* {challenge ? "success" : ""} */}
-       
-      </div>
-      <Web3Poster profile={profiles[0]} />
+      )}
+      <Slider
+       address={address}
+        connect={connect}
+        show={open}
+        hide={() => setOpen(false)}
+        challenge={challenge}
+        fetchChallenge={fetchChallenge}
+        profiles={profiles}
+        signChallenge={signChallenge}
+        signature={signature}
+        authToken={authToken}
+        fetchProfiles={fetchProfiles}
+      />
     </div>
   );
 };

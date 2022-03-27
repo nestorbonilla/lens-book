@@ -116,8 +116,6 @@ import BookABI from '../../contracts/BookABI.json'
       // 5. Mint NFT with the encryptedString and get tokenId
       let tokenId = await write({args: [bookId, ipfsHash]})
 
-
-
         
 
 

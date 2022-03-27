@@ -1,52 +1,74 @@
 import { useEffect, useState } from "react";
 import { createPostTypedData } from "./createPostTypeData";
-// import {
-//   useSignTypedData,
-//   useContract,
-//   useProvider,
-//   useSigner,
-//   useConnect,
-// } from "wagmi";
 import { ethers, Signer, utils } from "ethers";
 import Web3Modal from "web3modal";
 import LENS_HUB_ABI from "./lenshubabi.json";
 import * as omitDeep from "omit-deep-lodash";
+import { v4 as uuid } from "uuid";
 
 //validated by a guy in discord
 let LENS_HUB_PROXY_CONTRACT_ADDRESS =
   "0xd7B3481De00995046C7850bCe9a5196B7605c367";
 
-  // let LENS_HUB_CONTRACT_ADDRESS = '0x7c86e2a63941442462cce73EcA9F07F4Ad023261';
-
-
 const LensPoster = ({ profile }) => {
-  // const [{ data }, getSigner] = useSigner();
+  let [txnHash, setTxnHash] = useState("");
 
-  // const [domain, setDomain] = useState(null);
-  // const [types, setTypes] = useState(null);
-  // const [value, setValue] = useState(null);
+  const createPinata = async () => {
+    let metadata = {
+      version: "1.0.0",
+      name: "Highlight In Book",
+      description: "Highlight text imo",
+      metadata_id: uuid(),
+      content: "## A BIG FUCKING HIGHLIGHT",
+      attributes: [
+        {
+          displayType: "string",
+          traitType: "book",
+          value: "Alice in Thunderdome",
+        },
+        {
+          displayType: "string",
+          traitType: "chapter",
+          value: "2",
+        },
+        {
+          displayType: "string",
+          traitType: "cfiRange",
+          value: "epubfi(a;lskjdfajsjfl)",
+        },
+        {
+          displayType: "string",
+          traitType: "author",
+          value: "Jane Doe",
+        },
+      ],
+    };
 
-  // const lensHubContract = useContract({
-  //   addressOrName: LENS_HUB_PROXY_CONTRACT_ADDRESS,
-  //   contractInterface: LENS_HUB_ABI,
-  //   signerOrProvider: data,
-  // });
+    // 4.2 elaborate pinata options
+    const options = {
+      pinataMetadata: {
+        name: "book_derp",
+      },
+    };
 
-  // const [{ data: signature, error, loading }, signTypedData] = useSignTypedData(
-  //   {
-  //     domain,
-  //     types,
-  //     value,
-  //   }
-  // );
+    //make pinata metadata
+    const { ipfsHash } = await fetch("/api/pinata", {
+      method: "POST",
+      body: JSON.stringify({ metadata, options }),
+    }).then((response) => response.json());
+
+    console.log("nft metadata: ", ipfsHash);
+
+    return ipfsHash;
+  };
 
   const createPost = async () => {
-    // await getSigner();
+    let hash = await createPinata();
 
     // hard coded to make the code example clear
     const createPostRequest = {
       profileId: profile.id,
-      contentURI: "ipfs://QmPogtffEF3oAbKERsoR4Ky8aTvLgBF5totp5AuF8YN6vl.json",
+      contentURI: `ipfs://${hash}.json`,
       collectModule: {
         emptyCollectModule: true,
       },
@@ -55,18 +77,17 @@ const LensPoster = ({ profile }) => {
       },
     };
 
+    console.log("CraetePostRequest");
+    console.log(createPostRequest);
+
     const result = await createPostTypedData(createPostRequest);
 
     console.log("Received result from createPostTypedData");
-    console.log(result);
 
     const typedData = result.data.createPostTypedData.typedData;
 
+    console.log("Result from createPostTypedData");
     console.log(typedData);
-    //unsure if omit deep will work like this
-    // setValue(omitDeep(typedData.value, "__typename"));
-    // setTypes(omitDeep(typedData.types, "__typename"));
-    // setDomain(omitDeep(typedData.domain, "__typename"));
 
     let domain = omitDeep(typedData.domain, "__typename");
     let types = omitDeep(typedData.types, "__typename");
@@ -87,8 +108,8 @@ const LensPoster = ({ profile }) => {
     const lensHub = new ethers.Contract(
       LENS_HUB_PROXY_CONTRACT_ADDRESS,
       LENS_HUB_ABI,
-      signer, 
-    )
+      signer
+    );
 
     const tx = await lensHub.postWithSig({
       profileId: typedData.value.profileId,
@@ -106,46 +127,15 @@ const LensPoster = ({ profile }) => {
     });
 
     console.log(tx.hash);
+    setTxnHash(tx.hash);
   };
-
-  // const post = async () => {
-  //   if (signature) {
-  //     console.log("Signature: ", signature);
-
-  //     const { v, r, s } = utils.splitSignature(signature);
-
-  //     const tx = await lensHubContract.postWithSig({
-  //       profileId: value.profileId,
-  //       contentURI: value.contentURI,
-  //       collectModule: value.collectModule,
-  //       collectModuleData: value.collectModuleData,
-  //       referenceModule: value.referenceModule,
-  //       referenceModuleData: value.referenceModuleData,
-  //       sig: {
-  //         v,
-  //         r,
-  //         s,
-  //         deadline: value.deadline,
-  //       },
-  //     });
-
-  //     console.log(tx.hash);
-  //   } else {
-  //     console.log("No signature? in post");
-  //   }
-  // };
-
-  // useEffect(() => {
-  //   console.log("Hit sig use effect");
-  //   post();
-  // }, [signature]);
 
   return (
     <div>
       <button className="bg-green-500 p-3 m-3 rounded-md" onClick={createPost}>
         Create Publication
       </button>
-      {/* <SignerIdiot /> */}
+      {txnHash ? txnHash : ""}
     </div>
   );
 };
