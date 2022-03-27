@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   pinata.pinJSONToIPFS(metadata, options).then((result: any) => {
     res.status(200).json({ ipfsHash: result.IpfsHash })
   }).catch((err: any) => {
-    console.log(err);
-  });
+    console.log(err)
+  })
     
 }
