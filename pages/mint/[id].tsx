@@ -126,16 +126,15 @@ import BookABI from '../../contracts/BookABI.json'
       const accessControlConditions = [
         {
           contractAddress: smartContractAddress,
-          standardContractType: '',
-          chain: 'ethereum',
-          method: 'eth_getBalance',
+          standardContractType: 'ERC721',
+          chain,
+          method: 'ownerOf',
           parameters: [
-            ':userAddress',
-            'latest'
+            tokenId
           ],
           returnValueTest: {
-            comparator: '>=',
-            value: '10000000000000'
+            comparator: '=',
+            value: ':userAddress'
           }
         }
       ]
@@ -165,7 +164,7 @@ import BookABI from '../../contracts/BookABI.json'
 
       console.log("result from nft api: ", result)
     }
-    
+
     const unlockBook = async(bookId: number) => {
 
       const base64 = await fetch(encryptedUrl)
