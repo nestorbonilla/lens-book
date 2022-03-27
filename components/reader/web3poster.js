@@ -12,14 +12,14 @@ let LENS_HUB_PROXY_CONTRACT_ADDRESS =
 
 const LensPoster = ({ profile, highlightText, cfiRange }) => {
   let [txnHash, setTxnHash] = useState("");
- 
+
   const createPinata = async () => {
     let metadata = {
       version: "1.0.0",
       name: "Highlight In Book",
       description: "Highlight text imo",
       metadata_id: uuid(),
-      content: highlightText, 
+      content: highlightText,
       attributes: [
         {
           displayType: "string",
@@ -34,12 +34,12 @@ const LensPoster = ({ profile, highlightText, cfiRange }) => {
         {
           displayType: "string",
           traitType: "cfiRange",
-          value: cfiRange, 
+          value: cfiRange,
         },
         {
           displayType: "string",
           traitType: "quote",
-          value: highlightText, 
+          value: highlightText,
         },
 
         {
@@ -49,6 +49,9 @@ const LensPoster = ({ profile, highlightText, cfiRange }) => {
         },
       ],
     };
+
+    console.log("Metadata");
+    console.log(metadata);
 
     // 4.2 elaborate pinata options
     const options = {

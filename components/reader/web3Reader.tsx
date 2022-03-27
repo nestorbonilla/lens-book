@@ -8,7 +8,6 @@ import {
   FETCH_PROFILES,
   CREATE_PROFILE,
 } from "./LensQueries";
-// const alchemyId = process.env.ALCHEMY_KEY
 import Web3Modal from "web3modal";
 import { MenuIcon } from "@heroicons/react/outline";
 import { Rendition } from "epubjs";
@@ -273,6 +272,21 @@ const LensReader = ({ url }: Props) => {
       console.log("No rendition for save Highlight");
     }
   };
+
+   //set hooks for epub after render
+   useEffect(() => {
+    console.log("Set epub Hooks");
+    if (renditionRef.current) {
+      renditionRef.current.on("selected", saveHighlight);
+    }
+    return () => {
+      if (renditionRef.current) {
+        renditionRef.current.off("selected", saveHighlight);
+      }
+      //this is hook cleanup not sure if it calls the func actually?
+    };
+   }, [epubRendered]);
+  
 
   return (
     <div style={{ height: "100vh" }}>

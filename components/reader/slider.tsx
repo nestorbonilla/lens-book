@@ -63,7 +63,7 @@ export default function Slider({
                     <div className="flex items-start justify-between">
                       <Dialog.Title className="text-lg font-medium text-gray-900">
                         {" "}
-                        Lets do Lens Things{" "}
+                        Lets go brrrrrr{" "}
                       </Dialog.Title>
                       <div className="ml-3 flex h-7 items-center">
                         <button
