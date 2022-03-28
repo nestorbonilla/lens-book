@@ -14,21 +14,25 @@ import { fromString } from 'uint8arrays/from-string'
 import BookABI from '../../contracts/BookABI.json'
 import { createAlchemyWeb3 } from '@alch/alchemy-web3'
 
+declare const window: any;
+
+const ALCHEMY_KEY_WS = process.env.NEXT_PUBLIC_ALCHEMY_WS ? process.env.NEXT_PUBLIC_ALCHEMY_WS : ""; 
+const smartContractAddress = process.env.NEXT_PUBLIC_BOOK_SMART_CONTRACT ? process.env.NEXT_PUBLIC_BOOK_SMART_CONTRACT : "";
+
 export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticProps>) {
 
   let chain = 'mumbai'
-  let smartContractAddress = process.env.NEXT_PUBLIC_BOOK_SMART_CONTRACT
   const [{data: signerData}] = useSigner()
 
-  const web3 = createAlchemyWeb3(process.env.NEXT_PUBLIC_ALCHEMY_WS)
+  const web3 = createAlchemyWeb3(ALCHEMY_KEY_WS);
 
   const bookContract = new web3.eth.Contract(
-    BookABI,
+    BookABI as any,
     smartContractAddress
   );
 
   function addSmartContractListener() {
-    bookContract.events.MintedBookNFT({}, (error, data) => {
+    bookContract.events.MintedBookNFT({}, (error: any, data: any) => {
       if (error) {
         console.log("😥 " + error.message);
       } else {
@@ -50,9 +54,9 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
     'mint'
   )
 
-  let [encryptedUrl, setEncryptedUrl] = useState("")
-  let [decryptedUrl, setDecryptedUrl] = useState("")
-  let [symmetricKeyString, setSymmetricKeyString] = useState("")
+  let [encryptedUrl, setEncryptedUrl] = useState('')
+  let [decryptedUrl, setDecryptedUrl] = useState('')
+  let [symmetricKeyString, setSymmetricKeyString] = useState('')
   
   useEffect(() => {
       var litNodeClient = new LitJsSdk.LitNodeClient()
@@ -62,8 +66,6 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
   }, [])
 
   useEffect(() => {
-    console.log('newTokenId has been updated')
-    console.log('newTokenId: ', newTokenId)
     mintBookStep2(newTokenId)
   }, [newTokenId])
 
@@ -121,8 +123,6 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
       body: JSON.stringify({ metadata, options })
     }).then(response => response.json());
 
-    // console.log("nft metadata: ", ipfsHash)
-      
     // 5. Mint NFT with the encryptedString and get tokenId
     await write({args: [bookId, ipfsHash]})
 
@@ -130,7 +130,7 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
     let symmetricKeyToString = toString(symmetricKey, 'base64')
 
     setSymmetricKeyString(symmetricKeyToString)
-    setEncryptedUrl(base64String)
+    setEncryptedUrl(base64String  as string)
   }
 
   const mintBookStep2 = async(tokenId: number) => {
@@ -185,12 +185,10 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
 
     const authSig = await LitJsSdk.checkAndSignAuthMessage({chain})
 
-    console.log("unlock => tokenId: ", newTokenId)
     // get accessControlCondition and encryptedSymmetricKey from nft table stored in Supabase
     const getNFTUrl = `/api/getNFT?tokenId=${newTokenId}`
-    console.log("unlock => NFTUrl: ", getNFTUrl)
-    const { book: dbBook } = await fetch(getNFTUrl).then(response => response.json())
-    console.log("unlock => book: ", dbBook)
+    const nftURL = await fetch(getNFTUrl).then(response => response.json())
+    const dbBook = nftURL.data
     
     let accessControlConditions = JSON.parse(dbBook.access_control_condition)
 
@@ -204,29 +202,25 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
       authSig
     })
 
-    console.log("unlock => before tokenURI.")
-
     // get the book_url from the nft stored in the smart contract
     let tokenURI = ''
     try {
-      tokenURI = await bookContract.methods.tokenURI(newTokenId).call();
-      console.log('tokenURI: ', tokenURI)
+      tokenURI = await bookContract.methods.tokenURI(newTokenId).call()
     } catch (error) {
       console.log(error)
     }
 
     // get the metadata json from tokenURI
     const metadataJson = await fetch(tokenURI).then((response) => response.json())
-    console.log('metadata: ', metadataJson)
 
     // convert string version to blob
     const base64Response = await fetch(metadataJson.book_url)
     const blob = await base64Response.blob()
 
     const decryptedString = await LitJsSdk.decryptString(
-        blob,
-        symmetricKey
-      );
+      blob,
+      symmetricKey
+    )
     setDecryptedUrl(decryptedString)
   }
 
@@ -279,7 +273,7 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
             Mint Book
         </button>
         <button
-            onClick={() => {unlockBook(newTokenId)}}
+            onClick={() => {unlockBook()}}
             className="inline-flex items-center px-4 py-2 m-5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-lensGreen-600 hover:bg-lensGreen-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lensGreen-500"
         >
             <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
@@ -293,7 +287,7 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
 
 Mint.Layout = Layout
 
-export const getStaticPaths: GetStaticPaths = async () => {
+export const getStaticPaths = async () => {
     const { data: books } = await supabase.from("book").select('bookId')
     const paths = books?.map(({bookId}) => ({
         params: {

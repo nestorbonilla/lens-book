@@ -9,7 +9,7 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const { tokenId } = req.query
-  const { data: book } = await supabase.from('nft').select('*').eq('token_id', tokenId).single()
+  const { data } = await supabase.from('nft').select('*').eq('token_id', parseInt(tokenId.toString()) ).single()
 
-  res.status(200).json({ book })
+  res.status(200).json({ data })
 }
