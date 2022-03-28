@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { InferGetStaticPropsType } from 'next'
 import { PaperClipIcon, PlusIcon } from '@heroicons/react/solid'
 import { Fragment, useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Dialog, Transition } from '@headlessui/react'
 import { CheckIcon } from '@heroicons/react/outline'
 import { Layout } from '@components/common'
@@ -279,6 +280,12 @@ export default function Mint({ book }: InferGetStaticPropsType<typeof getStaticP
             <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
             Unlock Book
         </button>
+        <Link href="/read3/1" passHref>
+          <div className="inline-flex items-center px-4 py-2 m-5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-lensGreen-600 hover:bg-lensGreen-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lensGreen-500">
+            {/* <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" /> */}
+            Read Book
+          </div>
+        </Link>
       </div>
       
     </>
